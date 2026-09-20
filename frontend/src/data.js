@@ -1,0 +1,106 @@
+export const categories = [
+  "Vehicles",
+  "Furniture",
+  "Collectibles",
+  "Electronics",
+  "Antiques",
+  "Art",
+  "Fashion",
+  "Home & Lifestyle",
+];
+export const demos = [
+  ["Super Admin", "admin@StorageWars.demo", "Admin@123"],
+  ["Bidder / Seller", "bidder@StorageWars.demo", "Bidder@123"],
+  ["Customer / Buyer", "customer@StorageWars.demo", "Customer@123"],
+];
+export const auctions = [
+  {
+    id: 1,
+    name: "Storage Wars",
+    category: "Featured Auction",
+    image: "/hero.jpg",
+    currentBid: 15000,
+  },
+  {
+    id: 2,
+    name: "Vintage 1970s Motorcycle",
+    category: "Vehicles",
+    image:
+      "https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=1200&q=80",
+    startPrice: 4200,
+    currentBid: 6800,
+    bids: 18,
+    status: "LIVE",
+    startAt: "2026-08-28T16:00:00",
+    endAt: "2026-08-29T23:59:59",
+    seller: "Rohan Mehta",
+  },
+  {
+    id: 3,
+    name: "Mid-Century Lounge Chair",
+    category: "Furniture",
+    image:
+      "https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=1200&q=80",
+    startPrice: 850,
+    currentBid: 1450,
+    bids: 11,
+    status: "LIVE",
+    startAt: "2026-08-28T10:00:00",
+    endAt: "2026-08-30T20:00:00",
+    seller: "Studio Finds",
+  },
+  {
+    id: 4,
+    name: "Classic Film Camera",
+    category: "Collectibles",
+    image:
+      "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=1200&q=80",
+    startPrice: 300,
+    currentBid: 720,
+    bids: 9,
+    status: "UPCOMING",
+    startAt: "2026-08-30T10:00:00",
+    endAt: "2026-09-01T20:00:00",
+    seller: "Arjun Rao",
+  },
+  {
+    id: 5,
+    name: "Handmade Persian Rug",
+    category: "Home & Lifestyle",
+    image:
+      "https://images.unsplash.com/photo-1600166898405-da9535204843?auto=format&fit=crop&w=1200&q=80",
+    startPrice: 900,
+    currentBid: 2100,
+    bids: 24,
+    status: "LIVE",
+    startAt: "2026-08-28T12:00:00",
+    endAt: "2026-08-29T21:00:00",
+    seller: "Heritage House",
+  },
+];
+export const products = [
+  {
+    id: 1,
+    name: "Vintage 1970s Motorcycle",
+    category: "Vehicles",
+    price: 4200,
+    status: "Approved",
+    auction: "Live",
+  },
+  {
+    id: 2,
+    name: "Handmade Persian Rug",
+    category: "Home & Lifestyle",
+    price: 900,
+    status: "Pending",
+    auction: "Upcoming",
+  },
+  {
+    id: 3,
+    name: "Classic Film Camera",
+    category: "Collectibles",
+    price: 300,
+    status: "Approved",
+    auction: "Upcoming",
+  },
+];

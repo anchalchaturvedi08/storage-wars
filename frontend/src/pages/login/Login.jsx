@@ -4,11 +4,13 @@ import ReCAPTCHA from "react-google-recaptcha";
 import Layout from "../../component/layout/Layout";
 import api from "../../api/axios";
 import "./Login.css";
+import { RECAPTCHA_SITE_KEY } from "../../config";
 
 function Login() {
   let nav = useNavigate(),
     [e, setE] = useState(""),
     [p, setP] = useState(""),
+    [showPassword, setShowPassword] = useState(false),
     [recaptchaToken, setRecaptchaToken] = useState("");
 
   const recaptchaRef = useRef(null);
@@ -87,14 +89,33 @@ function Login() {
               required
               value={p}
               onChange={(x) => setP(x.target.value)}
-              type="password"
+              type={showPassword ? "text" : "password"}
               className="w-full rounded-xl border p-3"
               placeholder="Password"
             />
 
+            <div className="flex items-center justify-between text-sm">
+              <label className="flex cursor-pointer items-center gap-2 text-muted">
+                <input
+                  type="checkbox"
+                  checked={showPassword}
+                  onChange={() => setShowPassword(!showPassword)}
+                />
+                Show password
+              </label>
+
+              <button
+                type="button"
+                onClick={() => nav("/forgot-password")}
+                className="font-bold text-gold"
+              >
+                Forgot password?
+              </button>
+            </div>
+
             <ReCAPTCHA
               ref={recaptchaRef}
-              sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+              sitekey={RECAPTCHA_SITE_KEY}
               onChange={(token) => setRecaptchaToken(token || "")}
               onExpired={() => setRecaptchaToken("")}
             />

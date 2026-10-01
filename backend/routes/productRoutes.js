@@ -20,7 +20,13 @@ router.post(
     "/", 
     protect, 
     authorizeRoles("seller"), 
-    upload.single("image"), 
+    // upload.fields gives req.files as an object keyed by field name:
+    //   req.files.images     -> up to 5 photos
+    //   req.files.documents  -> up to 5 PDFs or Word files
+    upload.fields([
+        { name: "images", maxCount: 5 },
+        { name: "documents", maxCount: 5 }
+    ]),
     createProduct
 );
 

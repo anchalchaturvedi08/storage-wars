@@ -1,24 +1,12 @@
 import React from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
-import {
-  LogOut,
-} from "lucide-react";
-
+import { Link, useLocation } from "react-router-dom";
 import { demoNav } from "../../navigation";
 import Layout from "../layout/Layout";
 import "./DashboardLayout.css";
 
 function DashboardLayout({ role, title, children }) {
-  const navigate = useNavigate();
   const loc = useLocation();
   const links = demoNav[role];
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-
-    navigate("/login");
-  };
 
   return (
     <Layout>
@@ -30,8 +18,8 @@ function DashboardLayout({ role, title, children }) {
             {role === "admin"
               ? "SUPER ADMIN"
               : role === "seller"
-                ? "BIDDER / SELLER"
-                : "CUSTOMER / BUYER"}
+                ? "SELLER"
+                : "CUSTOMER"}
           </p>
 
           {links.map(([x, to, I]) => (
@@ -70,14 +58,6 @@ function DashboardLayout({ role, title, children }) {
               </h1>
             </div>
 
-            <button
-              onClick={handleLogout}
-              className="rounded-xl border bg-white p-2"
-              title="Logout"
-            >
-              <LogOut size={17} />
-            </button>
-
           </div>
 
           {children}
@@ -85,6 +65,7 @@ function DashboardLayout({ role, title, children }) {
         </div>
 
       </main>
+
     </Layout>
   );
 }

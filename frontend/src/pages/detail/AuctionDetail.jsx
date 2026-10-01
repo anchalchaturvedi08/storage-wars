@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Heart } from "lucide-react";
+import { Heart, FileText, Download, History, ListChecks, Truck } from "lucide-react";
 import Layout from "../../component/layout/Layout";
 import Timer from "../../component/timer/Timer";
 import api from "../../api/axios";
@@ -19,11 +19,22 @@ function AuctionDetail() {
     const [loading, setLoading] = useState(true);
     const [placingBid, setPlacingBid] = useState(false);
     const [addingToWatchlist, setAddingToWatchlist] = useState(false);
+    const [activeImage, setActiveImage] = useState(0);
+    const [bids, setBids] = useState([]);
 
     useEffect(() => {
         const fetchAuction = async () => {
             try {
                 const response = await api.get(`/auctions/${id}`);
+
+                // Bid history. Its own try/catch because a logged-out visitor
+                // gets a 401 here, and that must not blank the whole page.
+                try {
+                    const bidResponse = await api.get(`/bids/${id}`);
+                    setBids(bidResponse.data.bids || []);
+                } catch {
+                    setBids([]);
+                }
                 const auctionData = response.data.auction;
 
                 setAuction(auctionData);
@@ -151,9 +162,48 @@ function AuctionDetail() {
     const productName =
         product?.name || "Auction Item";
 
-    const image =
-        product?.images?.[0] || null;
+    // Filter out any empty strings so a stray blank entry does not render
+    // an broken thumbnail.
+    const images = (product?.images || []).filter(Boolean);
 
+    const documents = product?.documents || [];
+
+    // Only APPROVED bids count. A pending bid is not a price, and a rejected
+    // one never was. Sorted newest first for the history list.
+    const approvedBids = bids
+        .filter((bid) => bid.status === "approved")
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    // highestApprovedBid is maintained server-side on approval. Falling back
+    // to the computed value keeps auctions created before that field existed
+    // displaying correctly.
+    const highestApproved =
+        auction.highestApprovedBid ||
+        approvedBids.reduce((max, bid) => Math.max(max, bid.amount), 0);
+
+    const displayPrice = highestApproved > 0
+        ? highestApproved
+        : auction.startingPrice;
+
+    const subcategory = product?.category;
+    const parentCategory = subcategory?.parent;
+
+    const hasEnded = new Date(auction.endTime) <= new Date();
+
+    const specifications = product?.specifications || [];
+
+    // Condition is stored as a slug; this is the label shown to users.
+    const CONDITION_LABEL = {
+        "new": "New",
+        "like-new": "Like new",
+        "good": "Good",
+        "fair": "Fair",
+        "for-parts": "For parts"
+    };
+
+    // Beats the highest bid PLACED, since the server's atomic guard compares
+    // against currentBid. Using the approved figure here would let a client
+    // submit a bid the server is bound to reject.
     const minimumBid =
         Math.max(
             auction.startingPrice,
@@ -173,17 +223,87 @@ function AuctionDetail() {
 
                 <div className="mt-7 grid gap-10 lg:grid-cols-2">
 
-                    {/* IMAGE */}
+                    {/* GALLERY */}
                     <div>
-                        {image ? (
-                            <img
-                                src={image}
-                                alt={productName}
-                                className="aspect-square w-full rounded-3xl object-cover shadow-soft"
-                            />
+                        {images.length > 0 ? (
+                            <>
+                                <img
+                                    src={images[activeImage]}
+                                    alt={`${productName} — view ${activeImage + 1}`}
+                                    className="aspect-[4/3] w-full rounded-3xl object-cover shadow-soft"
+                                />
+
+                                {/* Thumbnails only appear when there is more
+                                    than one photo, so a single-image product
+                                    looks the same as it always did. */}
+                                {images.length > 1 && (
+                                    <div className="mt-3 grid grid-cols-5 gap-2">
+                                        {images.map((url, index) => (
+                                            <button
+                                                key={index}
+                                                type="button"
+                                                onClick={() => setActiveImage(index)}
+                                                className={
+                                                    "overflow-hidden rounded-xl border-2 transition " +
+                                                    (index === activeImage
+                                                        ? "border-gold"
+                                                        : "border-transparent opacity-70 hover:opacity-100")
+                                                }
+                                            >
+                                                <img
+                                                    src={url}
+                                                    alt={`Thumbnail ${index + 1}`}
+                                                    className="aspect-[4/3] w-full object-cover"
+                                                />
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </>
                         ) : (
-                            <div className="flex aspect-square w-full items-center justify-center rounded-3xl bg-gray-100 text-muted shadow-soft">
+                            <div className="flex aspect-[4/3] w-full items-center justify-center rounded-3xl bg-gray-100 text-muted shadow-soft">
                                 No image available
+                            </div>
+                        )}
+
+                        {/* DOCUMENTS */}
+                        {documents.length > 0 && (
+                            <div className="mt-6 rounded-2xl bg-white p-5 shadow-soft">
+                                <h3 className="flex items-center gap-2 font-black">
+                                    <FileText size={18} />
+                                    Documents
+                                </h3>
+
+                                <p className="mt-1 text-xs text-muted">
+                                    Available to view before bidding.
+                                </p>
+
+                                <ul className="mt-4 space-y-2">
+                                    {documents.map((doc, index) => (
+                                        <li key={index}>
+                                            <a
+                                                href={doc.url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-3 rounded-xl border p-3 text-sm transition hover:bg-cream"
+                                            >
+                                                <FileText size={16} />
+
+                                                <span className="flex-1 truncate font-semibold">
+                                                    {doc.name}
+                                                </span>
+
+                                                {doc.size && (
+                                                    <span className="text-xs text-muted">
+                                                        {(doc.size / 1024).toFixed(0)} KB
+                                                    </span>
+                                                )}
+
+                                                <Download size={15} />
+                                            </a>
+                                        </li>
+                                    ))}
+                                </ul>
                             </div>
                         )}
                     </div>
@@ -202,8 +322,35 @@ function AuctionDetail() {
                             {auction.status}
                         </span>
 
+                        {/* Breadcrumb. product.category points at the LEAF,
+                            so the parent comes from the nested populate. */}
                         <p className="mt-6 text-xs font-black uppercase tracking-widest text-gold">
-                            Auction
+                            {parentCategory ? (
+                                <>
+                                    <Link
+                                        to={`/auctions?category=${parentCategory._id}`}
+                                        className="hover:underline"
+                                    >
+                                        {parentCategory.name}
+                                    </Link>
+                                    {" / "}
+                                    <Link
+                                        to={`/auctions?category=${subcategory._id}`}
+                                        className="hover:underline"
+                                    >
+                                        {subcategory.name}
+                                    </Link>
+                                </>
+                            ) : subcategory ? (
+                                <Link
+                                    to={`/auctions?category=${subcategory._id}`}
+                                    className="hover:underline"
+                                >
+                                    {subcategory.name}
+                                </Link>
+                            ) : (
+                                "Auction"
+                            )}
                         </p>
 
                         <h1 className="mt-2 text-4xl font-black">
@@ -238,17 +385,32 @@ function AuctionDetail() {
 
                             <div className="rounded-2xl bg-white p-5 shadow-soft">
                                 <p className="text-xs text-muted">
-                                    Last bid
+                                    {highestApproved > 0
+                                        ? "Highest accepted bid"
+                                        : "No accepted bids yet"}
                                 </p>
 
                                 <b className="text-2xl">
-                                    {money(
-                                        auction.currentBid
-                                    )}
+                                    {money(displayPrice)}
                                 </b>
+
+                                <p className="mt-1 text-xs text-muted">
+                                    {approvedBids.length} accepted bid
+                                    {approvedBids.length === 1 ? "" : "s"}
+                                </p>
                             </div>
 
                         </div>
+
+                        {/* Shown only while bidding is possible. A pending bid
+                            is not a price, so the figure above never moves
+                            until a seller approves it. */}
+                        {!hasEnded && auction.status === "live" && (
+                            <p className="mt-3 text-sm text-muted">
+                                Minimum next bid{" "}
+                                <b className="text-ink">{money(minimumBid)}</b>
+                            </p>
+                        )}
 
                         {/* Button */}
                         <button
@@ -330,6 +492,119 @@ function AuctionDetail() {
                                         : "Place Bid"}
                                 </button>
 
+                            </div>
+                        )}
+
+                        {/* SPECIFICATIONS */}
+                        {(specifications.length > 0 ||
+                          product?.brand ||
+                          product?.model ||
+                          product?.condition) && (
+                            <div className="mt-6 rounded-2xl bg-white p-5 shadow-soft">
+                                <h3 className="flex items-center gap-2 font-black">
+                                    <ListChecks size={18} />
+                                    Specifications
+                                </h3>
+
+                                <dl className="mt-4 divide-y text-sm">
+                                    {product?.brand && (
+                                        <div className="flex justify-between gap-4 py-2.5">
+                                            <dt className="text-muted">Brand</dt>
+                                            <dd className="text-right font-semibold">
+                                                {product.brand}
+                                            </dd>
+                                        </div>
+                                    )}
+
+                                    {product?.model && (
+                                        <div className="flex justify-between gap-4 py-2.5">
+                                            <dt className="text-muted">Model</dt>
+                                            <dd className="text-right font-semibold">
+                                                {product.model}
+                                            </dd>
+                                        </div>
+                                    )}
+
+                                    {product?.condition && (
+                                        <div className="flex justify-between gap-4 py-2.5">
+                                            <dt className="text-muted">Condition</dt>
+                                            <dd className="text-right font-semibold">
+                                                {CONDITION_LABEL[product.condition] ||
+                                                    product.condition}
+                                            </dd>
+                                        </div>
+                                    )}
+
+                                    {specifications.map((row, index) => (
+                                        <div
+                                            key={index}
+                                            className="flex justify-between gap-4 py-2.5"
+                                        >
+                                            <dt className="text-muted">{row.label}</dt>
+                                            <dd className="text-right font-semibold">
+                                                {row.value}
+                                            </dd>
+                                        </div>
+                                    ))}
+                                </dl>
+                            </div>
+                        )}
+
+                        {/* COLLECTION */}
+                        {product?.collectionDetails && (
+                            <div className="mt-6 rounded-2xl bg-cream p-5">
+                                <h3 className="flex items-center gap-2 font-black">
+                                    <Truck size={18} />
+                                    Collection &amp; Shipping
+                                </h3>
+
+                                <p className="mt-2 text-sm leading-6 text-muted">
+                                    {product.collectionDetails}
+                                </p>
+                            </div>
+                        )}
+
+                        {/* BID HISTORY */}
+                        {approvedBids.length > 0 && (
+                            <div className="mt-6 rounded-2xl bg-white p-5 shadow-soft">
+                                <h3 className="flex items-center gap-2 font-black">
+                                    <History size={18} />
+                                    Bid History
+                                </h3>
+
+                                <p className="mt-1 text-xs text-muted">
+                                    Accepted bids only, newest first.
+                                </p>
+
+                                <ul className="mt-4 divide-y">
+                                    {approvedBids.map((bid, index) => (
+                                        <li
+                                            key={bid._id}
+                                            className="flex items-center justify-between py-3"
+                                        >
+                                            <div className="min-w-0">
+                                                <b className="block">
+                                                    {money(bid.amount)}
+                                                </b>
+
+                                                <span className="text-xs text-muted">
+                                                    {new Date(bid.createdAt).toLocaleString("en-IN", {
+                                                        day: "numeric",
+                                                        month: "short",
+                                                        hour: "numeric",
+                                                        minute: "2-digit"
+                                                    })}
+                                                </span>
+                                            </div>
+
+                                            {index === 0 && (
+                                                <span className="rounded-full bg-cream px-3 py-1 text-xs font-bold">
+                                                    Leading
+                                                </span>
+                                            )}
+                                        </li>
+                                    ))}
+                                </ul>
                             </div>
                         )}
 

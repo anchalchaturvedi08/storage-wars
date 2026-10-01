@@ -1,4 +1,4 @@
-import { Gavel, Heart, Users, Package, ShieldCheck, Plus, Check, Boxes, Percent, FileText, LayoutDashboard, TrendingUp, CircleDollarSign, ShoppingBag, Bell, Tag, } from "lucide-react";
+import { Gavel, Heart, Users, Package, ShieldCheck, Plus, Check, Boxes, Percent, FileText, LayoutDashboard, TrendingUp, CircleDollarSign, ShoppingBag, Bell, Tag, UserCog, } from "lucide-react";
 
 export const demoNav = {
     admin: [
@@ -10,6 +10,7 @@ export const demoNav = {
         ["Categories", "/admin/categories", Tag],
         ["Discounts", "/admin/discounts", Percent],
         ["Reports", "/admin/reports", FileText],
+        ["My Profile", "/profile", UserCog],
     ],
     seller: [
         ["Dashboard", "/seller", LayoutDashboard],
@@ -18,6 +19,7 @@ export const demoNav = {
         ["My Auctions", "/seller/auctions", Gavel],
         ["Bids Received", "/seller/bids", TrendingUp],
         ["Auction Results", "/seller/results", CircleDollarSign],
+        ["My Profile", "/profile", UserCog],
     ],
     buyer: [
         ["Dashboard", "/buyer", LayoutDashboard],
@@ -26,5 +28,6 @@ export const demoNav = {
         ["Won Auctions", "/buyer/won", ShieldCheck],
         ["Orders", "/buyer/orders", ShoppingBag],
         ["Notifications", "/buyer/notifications", Bell],
+        ["My Profile", "/profile", UserCog],
     ],
 };

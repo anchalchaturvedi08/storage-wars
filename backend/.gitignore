@@ -1,21 +1,30 @@
-# Dependencies
+# dependencies
 node_modules/
+*/node_modules/
 
-# Environment variables — NEVER commit these
+# environment
 .env
 .env.local
 .env.*.local
+*/.env
 
-# Build output
+# builds
 dist/
 build/
+backend/client/
 
-# Logs
+# logs
 *.log
 npm-debug.log*
+stderr.log
+stdout.log
 
-# Editor / OS files
+# editors & OS
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
+
+# archives
+*.zip
+*.tar.gz

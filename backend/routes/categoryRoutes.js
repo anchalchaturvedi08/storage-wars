@@ -6,6 +6,7 @@ const {
 
 const protect = require("../middlewares/authMiddleware");
 const authorizeRoles = require("../middlewares/roleMiddleware");
+const upload = require("../middlewares/uploadMiddleware");
 
 const router = express.Router();
 
@@ -13,6 +14,7 @@ router.post(
     "/",
     protect,
     authorizeRoles("admin"),
+    upload.single("image"),
     createCategory
 );
 
@@ -34,6 +36,7 @@ router.patch(
     "/:id",
     protect,
     authorizeRoles("admin"),
+    upload.single("image"),
     updateCategory
 );
 

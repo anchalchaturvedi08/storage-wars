@@ -9,13 +9,19 @@ const {
     getOrderById,
     updateOrder,
     deleteOrder,
-    createOrderFromAuction
+    createOrderFromAuction,
+    razorpayWebhook
 } = require("../controllers/orderController");
 
 const protect = require("../middlewares/authMiddleware");
 const authorizeRoles = require("../middlewares/roleMiddleware");
 
 const router = express.Router();
+
+// PUBLIC - Razorpay calls this server-to-server and is not logged in.
+// It is authenticated by the x-razorpay-signature header instead.
+// Declared first so no auth middleware can intercept it.
+router.post("/webhook", razorpayWebhook);
 
 router.post("/", protect, authorizeRoles("customer"), createOrder);
 

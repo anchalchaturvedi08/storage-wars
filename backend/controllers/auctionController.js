@@ -33,6 +33,33 @@ const updateAuctionStatuses = async () => {
 const createAuction = async (req, res) => {
   try {
     const { product, startingPrice, startTime, endTime } = req.body;
+    // The form now computes these, but nothing stopped a direct API call from
+    // creating an auction that had already ended - which is how one ends up
+    // marked "completed" the moment it is created.
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: "Start and end times must be valid dates"
+      });
+    }
+
+    if (end <= start) {
+      return res.status(400).json({
+        success: false,
+        message: "The auction must end after it starts"
+      });
+    }
+
+    if (end <= new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: "The auction would already have ended. Choose a later end time."
+      });
+    }
+
     const auction = await Auction.create({
       product,
       seller: req.user.id,
@@ -64,7 +91,18 @@ const getAuctions = async (req, res) => {
     await updateAuctionStatuses();
 
     const auctions = await Auction.find()
-      .populate("product", "name images description category")
+      .populate({
+        path: "product",
+        select: "name images documents description category startingPrice condition brand model specifications collectionDetails",
+        // Nested populate so the detail page can show both the subcategory
+        // and the parent category. product.category points at a LEAF, so the
+        // parent has to be resolved one level further.
+        populate: {
+          path: "category",
+          select: "name parent",
+          populate: { path: "parent", select: "name" }
+        }
+      })
       .populate("seller", "name email");
 
     res.status(200).json({
@@ -87,7 +125,18 @@ const getAuctions = async (req, res) => {
 const getAuctionById = async (req, res) => {
   try {
     const auction = await Auction.findById(req.params.id)
-      .populate("product", "name images description category")
+      .populate({
+        path: "product",
+        select: "name images documents description category startingPrice condition brand model specifications collectionDetails",
+        // Nested populate so the detail page can show both the subcategory
+        // and the parent category. product.category points at a LEAF, so the
+        // parent has to be resolved one level further.
+        populate: {
+          path: "category",
+          select: "name parent",
+          populate: { path: "parent", select: "name" }
+        }
+      })
       .populate("seller", "name email");
 
     if (!auction) {

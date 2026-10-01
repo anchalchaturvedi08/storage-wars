@@ -28,50 +28,84 @@ const placeBid = async (req, res) => {
             });
         }
 
-        // 3. Auction must be live
-        if (existingAuction.status !== "live") {
+        // 3. Amount must be a positive number
+        if (!amount || Number(amount) <= 0) {
             return res.status(400).json({
                 success: false,
-                message: "Auction is not live"
+                message: "Bid amount is required"
             });
         }
 
-        // 4. Auction must not be expired
-        if (
-            new Date() >
-            new Date(existingAuction.endTime)
-        ) {
+        // 4. Claim the new price ATOMICALLY.
+        //
+        // The old code read currentBid, compared it, then wrote - three
+        // separate operations. Two bids arriving milliseconds apart could
+        // both read the same stale value and both be accepted.
+        //
+        // findOneAndUpdate makes MongoDB do the comparison and the write as
+        // ONE operation. The remaining conditions (live, not expired, amount
+        // higher) are part of the filter, so they are evaluated at write time
+        // rather than beforehand. A losing bid simply matches nothing and
+        // gets null back.
+        const now = new Date();
+
+        const updatedAuction = await Auction.findOneAndUpdate(
+            {
+                _id: auction,
+                status: "live",
+                endTime: { $gt: now },
+                currentBid: { $lt: Number(amount) }
+            },
+            {
+                $set: { currentBid: Number(amount) }
+            },
+            {
+                new: true
+            }
+        );
+
+        // 5. The update matched nothing. Re-read to say exactly why.
+        if (!updatedAuction) {
+            const current = await Auction.findById(auction);
+
+            if (!current) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Auction not found"
+                });
+            }
+
+            if (current.status !== "live") {
+                return res.status(400).json({
+                    success: false,
+                    message: "Auction is not live"
+                });
+            }
+
+            // The status job runs on an interval, so an auction can still
+            // read "live" briefly after its end time. This is the check that
+            // actually closes that window.
+            if (new Date() > new Date(current.endTime)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Auction has ended"
+                });
+            }
+
             return res.status(400).json({
                 success: false,
-                message: "Auction has ended"
+                message: "Bid amount must be greater than current bid",
+                currentBid: current.currentBid
             });
         }
 
-        // 5. Validate bid amount
-        if (
-            !amount ||
-            Number(amount) <=
-                Number(existingAuction.currentBid)
-        ) {
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Bid amount must be greater than current bid"
-            });
-        }
-
-        // 6. Create bid
+        // 6. The price is claimed. Record the bid.
         const bid = await Bid.create({
             auction,
             bidder: req.user.id,
             amount: Number(amount),
             status: "pending"
         });
-
-        // 7. Update current bid
-        existingAuction.currentBid = Number(amount);
-
-        await existingAuction.save();
 
         res.status(201).json({
             success: true,
@@ -284,6 +318,28 @@ const updateBidStatus = async (req, res) => {
         bid.status = status;
 
         await bid.save();
+
+        // 5b. Keep the displayed price in step with APPROVED bids only.
+        //
+        // Approving: raise it if this bid beats the current figure.
+        // Rejecting: the rejected bid may have been the top one, so recompute
+        //            from whatever approved bids remain rather than guessing.
+        if (status === "approved") {
+            if (bid.amount > (bid.auction.highestApprovedBid || 0)) {
+                await Auction.findByIdAndUpdate(bid.auction._id, {
+                    $set: { highestApprovedBid: bid.amount }
+                });
+            }
+        } else {
+            const topApproved = await Bid.findOne({
+                auction: bid.auction._id,
+                status: "approved"
+            }).sort({ amount: -1 });
+
+            await Auction.findByIdAndUpdate(bid.auction._id, {
+                $set: { highestApprovedBid: topApproved ? topApproved.amount : 0 }
+            });
+        }
 
         // 6. Notification
         await Notification.create({

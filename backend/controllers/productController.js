@@ -8,28 +8,104 @@ const createProduct = async (req, res) => {
             name,
             description,
             category,
-            startingPrice
+            startingPrice,
+            condition,
+            brand,
+            model,
+            collectionDetails
         } = req.body;
 
-        let imageUrl = "";
+        // specifications arrives as a JSON string, because the request is
+        // multipart/form-data and FormData cannot carry nested objects.
+        let specifications = [];
 
-        if (req.file) {
-            const uploadResult = await cloudinary.uploader.upload(
-                `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`,
+        if (req.body.specifications) {
+            try {
+                const parsed = JSON.parse(req.body.specifications);
+
+                if (Array.isArray(parsed)) {
+                    specifications = parsed
+                        .filter((row) => row && row.label && row.value)
+                        .map((row) => ({
+                            label: String(row.label).trim(),
+                            value: String(row.value).trim()
+                        }));
+                }
+            } catch {
+                // Malformed input is ignored rather than failing the whole
+                // product creation over an optional field.
+                specifications = [];
+            }
+        }
+
+        const images = [];
+        const documents = [];
+
+        // ---- photos ----
+        // Normalised to 4:3 at 1200x900 on the way in, so the gallery does not
+        // have to compensate for uploads of different shapes. gravity:"auto"
+        // lets Cloudinary find the subject rather than blindly centre-cropping.
+        const imageFiles = req.files?.images || [];
+
+        for (const file of imageFiles) {
+            const result = await cloudinary.uploader.upload(
+                `data:${file.mimetype};base64,${file.buffer.toString("base64")}`,
                 {
-                    folder: "storagewars/products"
+                    folder: "storagewars/products",
+                    transformation: [
+                        {
+                            width: 1200,
+                            height: 900,
+                            crop: "fill",
+                            gravity: "auto"
+                        },
+                        {
+                            quality: "auto",
+                            fetch_format: "auto"
+                        }
+                    ]
                 }
             );
 
-            imageUrl = uploadResult.secure_url;
+            images.push(result.secure_url);
+        }
+
+        // ---- documents ----
+        // resource_type "raw" is how Cloudinary stores anything that is not an
+        // image or a video. The original filename is kept so the download has
+        // a sensible name rather than a random id.
+        const documentFiles = req.files?.documents || [];
+
+        for (const file of documentFiles) {
+            const result = await cloudinary.uploader.upload(
+                `data:${file.mimetype};base64,${file.buffer.toString("base64")}`,
+                {
+                    folder: "storagewars/documents",
+                    resource_type: "raw",
+                    use_filename: true,
+                    unique_filename: true
+                }
+            );
+
+            documents.push({
+                name: file.originalname,
+                url: result.secure_url,
+                size: file.size
+            });
         }
 
         const product = await Product.create({
             name,
             description,
             category,
-            images: imageUrl ? [imageUrl] : [],
+            images,
+            documents,
             startingPrice,
+            condition: condition || "",
+            brand: brand || "",
+            model: model || "",
+            specifications,
+            collectionDetails: collectionDetails || "",
             seller: req.user.id
         });
 

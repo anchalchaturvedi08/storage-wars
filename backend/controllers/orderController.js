@@ -306,6 +306,39 @@ const updateOrder = async (req, res) => {
             });
         }
 
+        // A customer must NOT be able to set "confirmed" here. That status
+        // means "payment verified", and it is set in exactly two places:
+        // verifyPayment, after the Razorpay HMAC check passes, and the
+        // webhook. Allowing it on this route let a buyer mark their own
+        // unpaid order as paid.
+        if (req.user.role === "customer") {
+            const allowedForCustomer = ["cancelled"];
+
+            if (!allowedForCustomer.includes(status)) {
+                return res.status(403).json({
+                    success: false,
+                    message:
+                        "Order status is set by the payment flow. You can only cancel a pending order."
+                });
+            }
+
+            if (order.status !== "pending") {
+                return res.status(400).json({
+                    success: false,
+                    message: "Only a pending order can be cancelled"
+                });
+            }
+        }
+
+        // Nobody reaches "confirmed" through this route, whatever their role.
+        // Payment verification owns that transition.
+        if (status === "confirmed") {
+            return res.status(403).json({
+                success: false,
+                message: "An order is confirmed by verified payment, not manually"
+            });
+        }
+
         order.status = status;
 
         await order.save();
@@ -424,7 +457,92 @@ const createOrderFromAuction = async (req, res) => {
     }
 };
 
+
+// Razorpay webhook.
+//
+// Why this exists: the browser callback only fires if the user stays on the
+// page. If they close the tab after paying, Razorpay has their money and our
+// database still says "pending" forever. Razorpay calls this endpoint
+// server-to-server, independently of the browser, so it is the source of
+// truth. The callback is for user experience; the webhook is for correctness.
+//
+// This route is PUBLIC - Razorpay is not logged in. It is authenticated by
+// the signature header instead, using a secret only Razorpay and we know.
+const razorpayWebhook = async (req, res) => {
+    try {
+        const signature = req.headers["x-razorpay-signature"];
+        const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+
+        if (!secret) {
+            console.error("WEBHOOK: RAZORPAY_WEBHOOK_SECRET is not set");
+            return res.status(500).json({ success: false });
+        }
+
+        if (!signature || !req.rawBody) {
+            return res.status(400).json({ success: false });
+        }
+
+        // Recompute the signature over the raw bytes and compare. Anyone can
+        // POST to this URL; only Razorpay can produce a matching signature.
+        const expectedSignature = crypto
+            .createHmac("sha256", secret)
+            .update(req.rawBody)
+            .digest("hex");
+
+        const a = Buffer.from(expectedSignature, "utf8");
+        const b = Buffer.from(signature, "utf8");
+
+        // timingSafeEqual instead of !== : a normal string comparison returns
+        // early on the first mismatched character, and that timing difference
+        // is theoretically measurable.
+        if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+            console.error("WEBHOOK: signature mismatch");
+            return res.status(400).json({ success: false });
+        }
+
+        const event = req.body.event;
+        const payment = req.body.payload?.payment?.entity;
+
+        if (event !== "payment.captured" || !payment) {
+            // Acknowledge events we do not handle, or Razorpay keeps retrying.
+            return res.status(200).json({ success: true, ignored: event });
+        }
+
+        const order = await Order.findOne({
+            razorpayOrderId: payment.order_id
+        });
+
+        if (!order) {
+            console.error("WEBHOOK: no order for", payment.order_id);
+            return res.status(200).json({ success: true });
+        }
+
+        // Idempotency. Razorpay retries a webhook until it gets a 200, and the
+        // browser callback may already have confirmed this order. Processing
+        // the same payment twice must be harmless.
+        if (order.status === "confirmed") {
+            return res.status(200).json({ success: true, alreadyConfirmed: true });
+        }
+
+        order.razorpayPaymentId = payment.id;
+        order.status = "confirmed";
+
+        await order.save();
+
+        console.log("WEBHOOK: order confirmed", order._id.toString());
+
+        res.status(200).json({ success: true });
+
+    } catch (error) {
+        console.error("WEBHOOK ERROR:", error);
+
+        // Return 200 so Razorpay does not retry forever on our own bug.
+        res.status(200).json({ success: false });
+    }
+};
+
 module.exports = {
+    razorpayWebhook,
     createOrder,
     createPaymentOrder,
     verifyPayment,

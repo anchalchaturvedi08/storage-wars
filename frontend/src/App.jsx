@@ -13,6 +13,10 @@ import Register from "./pages/register/Register";
 import NotFound from "./pages/notfound/NotFound";
 // VerifyEmail
 import VerifyEmail from "./pages/verifyemail/VerifyEmail";
+import ForgotPassword from "./pages/forgotpassword/ForgotPassword";
+import ResetPassword from "./pages/resetpassword/ResetPassword";
+import Profile from "./pages/profile/Profile";
+import ConfirmEmailChange from "./pages/confirmemailchange/ConfirmEmailChange";
 import Payment from "./pages/buyer/Payment";
 import ProtectedRoute from "./component/protectedroute/ProtectedRoute";
 
@@ -27,12 +31,12 @@ import Discounts from "./dashboards/admin/Discounts";
 import Reports from "./dashboards/admin/Reports";
 
 // Seller
-import BidderDashboard from "./dashboards/bidder/BidderDashboard";
-import AddProduct from "./dashboards/bidder/AddProduct";
-import MyProducts from "./dashboards/bidder/MyProducts";
-import MyAuctions from "./dashboards/bidder/MyAuctions";
-import BidsReceived from "./dashboards/bidder/BidsReceived";
-import AuctionResults from "./dashboards/bidder/AuctionResults";
+import BidderDashboard from "./dashboards/seller/BidderDashboard";
+import AddProduct from "./dashboards/seller/AddProduct";
+import MyProducts from "./dashboards/seller/MyProducts";
+import MyAuctions from "./dashboards/seller/MyAuctions";
+import BidsReceived from "./dashboards/seller/BidsReceived";
+import AuctionResults from "./dashboards/seller/AuctionResults";
 
 // Customer
 import CustomerDashboard from "./dashboards/customer/CustomerDashboard";
@@ -58,10 +62,34 @@ function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/verify-email/:token" element={<VerifyEmail />}></Route>
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password/:token" element={<ResetPassword />} />
+                <Route path="/confirm-email-change/:token" element={<ConfirmEmailChange />} />
                 <Route path="/payment/:orderId" element={<Payment />} />
                 <Route path="*" element={<NotFound />} />
 
                 {/* Admin Routes */}
+
+                {/*
+                    /profile is shared by all three roles, so it gets its own
+                    guard listing all of them.
+
+                    It must NOT be repeated inside the admin, seller and buyer
+                    groups: React Router matches in declaration order, so the
+                    first matching path wins. A seller hitting a /profile
+                    declared in the admin group fails that guard's role check
+                    and is redirected to their own dashboard - which looks
+                    like the page simply refusing to open.
+                */}
+                <Route
+                    element={
+                        <ProtectedRoute
+                            allowedRoles={["admin", "seller", "customer"]}
+                        />
+                    }
+                >
+                    <Route path="/profile" element={<Profile />} />
+                </Route>
 
                 <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
                     <Route path="/admin" element={<AdminDashboard />} />

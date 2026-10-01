@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
 import ReCAPTCHA from "react-google-recaptcha";
+import { RECAPTCHA_SITE_KEY } from "../../config";
 import Layout from "../../component/layout/Layout";
 import api from "../../api/axios";
 import "./Contact.css";
@@ -49,66 +50,92 @@ function Contact() {
 
   return (
     <Layout>
-      <main className="container-x py-20">
-        <div className="max-w-3xl">
-          <p className="text-xs font-black uppercase tracking-widest text-gold">
-            GET IN TOUCH
-          </p>
+      <main className="container-x flex justify-center py-14">
+        <div className="w-full max-w-xl rounded-3xl bg-white p-8 shadow-soft sm:p-10">
 
-          <h1 className="mt-3 text-5xl font-black">
-            Contact Us
-          </h1>
+          <div className="text-center">
+            <p className="text-xs font-black uppercase tracking-[.2em] text-gold">
+              Get in touch
+            </p>
 
-          <p className="mt-6 text-lg leading-8 text-muted">
-            Have a question about an auction, account or listing? Send us a message.
-          </p>
+            <h1 className="mt-2 text-3xl font-black">
+              Contact Us
+            </h1>
 
-          <form onSubmit={handleSubmit} className="mt-10 grid max-w-xl gap-4">
-            <input
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              required
-              className="rounded-xl border p-3"
-              placeholder="Your name"
-            />
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Questions about an auction, a listing or your account? Send us a
+              message and we will reply to the address you give below.
+            </p>
+          </div>
 
-            <input
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              type="email"
-              className="rounded-xl border p-3"
-              placeholder="Email"
-            />
+          <form onSubmit={handleSubmit} className="mt-8 space-y-4">
 
-            <textarea
-              name="message"
-              value={formData.message}
-              onChange={handleChange}
-              required
-              rows="6"
-              className="rounded-xl border p-3"
-              placeholder="Message"
-            />
+            <label className="block text-sm font-bold">
+              Full Name
+              <input
+                required
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="Your name"
+                className="mt-2 w-full rounded-xl border p-3 font-normal"
+              />
+            </label>
 
-            <ReCAPTCHA
-              ref={recaptchaRef}
-              sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
-              onChange={(token) => setRecaptchaToken(token || "")}
-              onExpired={() => setRecaptchaToken("")}
-            />
+            <label className="block text-sm font-bold">
+              Email Address
+              <input
+                required
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="you@example.com"
+                className="mt-2 w-full rounded-xl border p-3 font-normal"
+              />
+            </label>
+
+            <label className="block text-sm font-bold">
+              Message
+              <textarea
+                required
+                name="message"
+                rows={5}
+                value={formData.message}
+                onChange={handleChange}
+                placeholder="How can we help?"
+                className="mt-2 w-full rounded-xl border p-3 font-normal"
+              />
+            </label>
+
+            <div className="flex justify-center pt-1">
+              <ReCAPTCHA
+                ref={recaptchaRef}
+                sitekey={RECAPTCHA_SITE_KEY}
+                onChange={(token) => setRecaptchaToken(token || "")}
+                onExpired={() => setRecaptchaToken("")}
+              />
+            </div>
 
             <button
               type="submit"
-              className="rounded-xl bg-ink p-3 font-bold text-white"
+              className="w-full rounded-xl bg-ink p-3.5 font-bold text-white transition hover:opacity-90"
             >
               Send Message
             </button>
-          </form>
 
-          {status && <p className="mt-4 font-bold">{status}</p>}
+            {status && (
+              <p
+                className={
+                  "pt-1 text-center text-sm font-bold " +
+                  (status.includes("success") ? "text-green-700" : "text-red-600")
+                }
+              >
+                {status}
+              </p>
+            )}
+          </form>
         </div>
       </main>
     </Layout>

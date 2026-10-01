@@ -2,6 +2,17 @@ import React from "react";
 import { Link } from "react-router-dom";
 
 import Timer from "../timer/Timer";
+
+// "30 Sept, 7:30 pm" — short enough for a card footer.
+const shortDateTime = (value) =>
+  value
+    ? new Date(value).toLocaleString("en-IN", {
+        day: "numeric",
+        month: "short",
+        hour: "numeric",
+        minute: "2-digit"
+      })
+    : "--";
 import "./AuctionCard.css";
 
 const money = (n) =>
@@ -60,15 +71,50 @@ function AuctionCard({ a }) {
 
         <div className="mt-4 flex justify-between">
           <div>
+            {/* The APPROVED figure, not currentBid. currentBid tracks the
+                highest bid placed, which may still be pending or get
+                rejected - showing it would advertise a price nobody has
+                accepted. */}
             <p className="text-xs text-muted">
-              Last bid
+              {a.highestApprovedBid > 0 ? "Highest bid" : "Starts at"}
             </p>
 
-            <b>{money(a.currentBid)}</b>
+            <b>
+              {money(
+                a.highestApprovedBid > 0
+                  ? a.highestApprovedBid
+                  : a.startingPrice
+              )}
+            </b>
           </div>
 
-          <span className="text-xs text-muted">
-            {a.bids || 0} bids
+          {/* Timing depends on the state:
+                live      -> a running countdown to endTime
+                upcoming  -> when bidding opens
+                completed -> no countdown, just the date it closed
+              A countdown on an ended auction would tick at zero forever. */}
+          <span className="text-right text-xs text-muted">
+            {a.status === "live" ? (
+              <>
+                Ends in
+                <br />
+                <b className="text-ink">
+                  <Timer end={a.endTime} />
+                </b>
+              </>
+            ) : a.status === "upcoming" ? (
+              <>
+                Starts
+                <br />
+                <b className="text-ink">{shortDateTime(a.startTime)}</b>
+              </>
+            ) : (
+              <>
+                Ended
+                <br />
+                <b className="text-ink">{shortDateTime(a.endTime)}</b>
+              </>
+            )}
           </span>
         </div>
       </div>

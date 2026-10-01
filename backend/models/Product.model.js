@@ -24,6 +24,64 @@ const productSchema = new mongoose.Schema(
             default: []
         },
 
+        // Supporting paperwork - RC book, service history, invoices.
+        // Stored as Cloudinary "raw" uploads, which is how non-image files
+        // are held. Public by design: a bidder needs the documents BEFORE
+        // bidding, not after winning, or they are bidding blind.
+        documents: {
+            type: [
+                {
+                    name: { type: String, required: true },
+                    url: { type: String, required: true },
+                    size: { type: Number }
+                }
+            ],
+            default: []
+        },
+
+        // ---- optional descriptive fields ----
+        // All optional, so every product created before this existed stays
+        // valid. The detail page renders each block only when it has content.
+
+        condition: {
+            type: String,
+            enum: ["new", "like-new", "good", "fair", "for-parts", ""],
+            default: ""
+        },
+
+        brand: {
+            type: String,
+            trim: true,
+            default: ""
+        },
+
+        model: {
+            type: String,
+            trim: true,
+            default: ""
+        },
+
+        // Free-form label/value pairs rather than fixed columns, so a
+        // motorcycle can list engine capacity and a laptop can list RAM
+        // without either needing its own schema.
+        specifications: {
+            type: [
+                {
+                    label: { type: String, required: true, trim: true },
+                    value: { type: String, required: true, trim: true }
+                }
+            ],
+            default: []
+        },
+
+        // How the winner takes delivery - pickup address, shipping terms,
+        // collection deadline.
+        collectionDetails: {
+            type: String,
+            trim: true,
+            default: ""
+        },
+
         startingPrice: {
             type: Number,
             required: [true, "Starting price is required"],

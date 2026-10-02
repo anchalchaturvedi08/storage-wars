@@ -95,8 +95,11 @@ function WonAuctions() {
                   mark their own order paid without paying. It now routes to
                   the Razorpay flow, and the server refuses a manual confirm. */}
               {isPaid ? (
+                /* Worded from the CUSTOMER's side - they made the payment.
+                   The seller's view of the same order says "Payment received",
+                   because they are the one receiving it. */
                 <div className="mt-5 rounded-xl bg-cream p-3 text-center text-sm font-bold text-green-700">
-                  Payment received
+                  Payment done
                 </div>
               ) : (
                 <button
